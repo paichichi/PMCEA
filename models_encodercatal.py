@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from gcn_layer import NR_GraphAttention,NR_GraphAttentionCross,NR_GraphAttentionMu,Vanilla_GraphAttention,NR_GraphAttentionAL
+from gcn_layer import NR_GraphAttention,NR_GraphAttentionAL
 from tabulate import tabulate
 import logging
 from torch_scatter import scatter_mean
@@ -58,27 +58,6 @@ class Encoder_Model_Al(nn.Module):
         torch.nn.init.xavier_uniform_(self.rel_embedding.weight)
         torch.nn.init.xavier_uniform_(self.img_embedding.weight)
 
-        self.e_encoder_vanilla = Vanilla_GraphAttention(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        self.r_encoder_vanilla = Vanilla_GraphAttention(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        self.image_encoder_vanilla = Vanilla_GraphAttention(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
         
         self.e_encoder = NR_GraphAttentionAL(node_size=self.new_node_size,
                                            rel_size=self.rel_size,
@@ -94,38 +73,7 @@ class Encoder_Model_Al(nn.Module):
                                            depth=self.depth,
                                            use_bias=True
                                            )
-        
-
-        self.e_encoder_cross = NR_GraphAttentionCross(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        self.e_encoder_img_cross = NR_GraphAttentionCross(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        
-        self.e_encoder_mu = NR_GraphAttentionMu(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        self.e_encoder_img_mu = NR_GraphAttentionMu(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        
+                
 
 
 

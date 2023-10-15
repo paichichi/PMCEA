@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from gcn_layer import NR_GraphAttention,NR_GraphAttentionCross,NR_GraphAttentionMu,Vanilla_GraphAttention
+from gcn_layer import NR_GraphAttention
 from tabulate import tabulate
 import logging
 from torch_scatter import scatter_mean
@@ -58,75 +58,21 @@ class Encoder_Model(nn.Module):
         torch.nn.init.xavier_uniform_(self.rel_embedding.weight)
         torch.nn.init.xavier_uniform_(self.img_embedding.weight)
 
-        self.e_encoder_vanilla = Vanilla_GraphAttention(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        self.r_encoder_vanilla = Vanilla_GraphAttention(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        self.image_encoder_vanilla = Vanilla_GraphAttention(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        
-        self.e_encoder = NR_GraphAttention(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        self.e_encoder_img = NR_GraphAttention(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        
 
-        self.e_encoder_cross = NR_GraphAttentionCross(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        self.e_encoder_img_cross = NR_GraphAttentionCross(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        
-        self.e_encoder_mu = NR_GraphAttentionMu(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
-        self.e_encoder_img_mu = NR_GraphAttentionMu(node_size=self.new_node_size,
-                                           rel_size=self.rel_size,
-                                           triple_size=self.triple_size,
-                                           node_dim=self.node_hidden,
-                                           depth=self.depth,
-                                           use_bias=True
-                                           )
+
         
         self.r_encoder = NR_GraphAttention(node_size=self.new_node_size,
+                                           rel_size=self.rel_size,
+                                           triple_size=self.triple_size,
+                                           node_dim=self.node_hidden,
+                                           depth=self.depth,
+                                           use_bias=True
+                                           )
+
+        
+
+        
+        self.e_encoder = NR_GraphAttention(node_size=self.new_node_size,
                                            rel_size=self.rel_size,
                                            triple_size=self.triple_size,
                                            node_dim=self.node_hidden,
@@ -155,63 +101,22 @@ class Encoder_Model(nn.Module):
         opt = [self.rel_embedding.weight, self.adj_list, self.r_index, self.r_val]
         out_rel_feature = self.r_encoder([rel_feature] + opt)
 
-        # out_feature_join,img_rel_feature,ent_rel_feature = self.gcn_forward()
-
-        # out_ent_feature = self.e_encoder_vanilla([ent_feature] + opt)
-        # out_rel_feature = self.r_encoder_vanilla([ent_feature] + opt)
-        # out_img_feature = self.image_encoder_vanilla([img_feature] + opt)
-
         out_ent_feature = self.e_encoder([ent_feature] + opt)
-        # out_img_feature = self.e_encoder_img([img_feature] + opt)
 
-        # out_ent_feature_mu = self.e_encoder_mu([ent_feature] + opt+[img_feature])
-        # out_img_feature_mu = self.e_encoder_img_mu([img_feature] + opt+[ent_feature])
-
-        # out_ent_feature = self.e_encoder_cross([ent_feature] + opt+[img_feature,False])
-        # out_img_feature = self.e_encoder_img_cross([img_feature] + opt+[ent_feature,True])
-        # out_img_feature = img_feature
-        # if turn>=1:
-        # out_feature_join = torch.cat([out_ent_feature,out_img_feature*0.3,out_ent_feature_mu*1,out_img_feature_mu*0.1 ,out_rel_feature], dim=-1)
-        # out_feature_join = torch.cat([out_ent_feature,out_img_feature*0.05,out_ent_feature_mu*1,out_img_feature_mu*0.1 ,out_rel_feature], dim=-1)
-        # out_feature_join = torch.cat([out_ent_feature,out_img_feature*0.1 ,out_rel_feature], dim=-1)
         out_feature_join = torch.cat([out_ent_feature ,out_rel_feature], dim=-1)
-        # out_feature_join = torch.cat([out_ent_feature,out_img_feature*0.3 ,out_rel_feature], dim=-1)
-        # out_feature_join = torch.cat([out_ent_feature,out_ent_feature_mu*0.1 ,out_img_feature_mu*0.1, out_rel_feature], dim=-1)
-        # else :
-        #    out_feature_join = torch.cat([out_ent_feature,out_img_feature*0.35,out_rel_feature], dim=-1)
-        # out_feature = torch.cat([self.e_encoder([ent_feature] + opt), out_rel_feature], dim=-1)
 
-        # joint_emb  =[out_ent_feature,out_img_feature]
-        # # out_rel_feature=F.normalize(out_rel_feature)
-        # joint_emb = self.fusion(joint_emb)
-
-        # out_feature_join =torch.cat([joint_emb,out_rel_feature], dim=-1)
-        # out_feature_join =joint_emb
-
-        # img_rel_feature= torch.cat([out_img_feature,out_rel_feature], dim=-1)
-        # img_rel_feature= out_img_feature
-        # ent_rel_feature= torch.cat([out_ent_feature,out_rel_feature], dim=-1)
-
-        # img_rel_feature = self.dropout(img_rel_feature)
-        # ent_rel_feature = self.dropout(ent_rel_feature)
         out_feature_join = self.dropout(out_feature_join)
 
 
-        # img_out_feature = torch.cat([self.e_encoder_img([self.img_feature] + opt), out_rel_feature], dim=-1)
-        # out_feature = self.dropout(out_feature)
-        # img_out_feature = self.dropout(img_out_feature)
 
         return out_feature_join
-        # return out_feature,img_out_feature
+
 
     def forward(self, train_paris:torch.Tensor,turn):
         out_feature_join = self.gcn_forward(turn)
 
         loss1 = self.align_loss(train_paris, out_feature_join)
-        # loss2 = self.align_loss(train_paris, img_rel_feature)
-        # loss3 = self.align_loss(train_paris, ent_rel_feature)
- 
-        # return loss1 +loss2+loss3
+
         return loss1
 
 

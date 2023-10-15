@@ -44,7 +44,7 @@ set_seed(seed)
 tf.compat.v1.set_random_seed(seed)
 
 
-data_ca="ja_en/"
+data_ca="zh_en/"
 # train_pair,dev_pair,adj_matrix,r_index,r_val,adj_features,rel_features = load_data("data/fb_yago_en/",train_ratio=0.20)
 data_dir = 'data/'+data_ca
 _,_,_,adj_matrix,r_index,r_val,adj_features,rel_features = load_data(data_dir,train_ratio=0.30)
@@ -53,7 +53,7 @@ output_dir="checkpoints/"+data_ca
 
 ref_pairs = np.load(os.path.join(output_dir, "ref_pairs.npz"))
 train_pair = ref_pairs["train_pair"]
-val_pair = ref_pairs["valid_pair"]
+val_pair = ref_pairs["val_pair"]
 dev_pair = ref_pairs["dev_pair"]
 
 used_inds2_array = np.load(os.path.join(output_dir, "used_inds2.npz"))
@@ -272,7 +272,7 @@ with torch.no_grad():
     # evaluater.test(Lvec, Rvec)
     evaluater_torch.test(Lvec, Rvec,img_sim_dev.cpu(),img_sim_dev.t().cpu())
 epoch = 12
-
+mrr_or=0
 for turn in range(5):
 
     for i in trange(epoch):
@@ -296,14 +296,18 @@ for turn in range(5):
         with torch.no_grad():
             Lvec, Rvec = model.get_embeddings(dev_pair[:, 0], dev_pair[:, 1],turn)
             Lvec_val, Rvec_val = model.get_embeddings(val_pair[:, 0], val_pair[:, 1],turn)
-            # output = model(inputs)
-            # Lvec, Rvec = get_embedding(dev_pair[:, 0], dev_pair[:, 1], output.cpu())
-            # evaluater.test(Lvec, Rvec)
-            evaluater_torch.test(Lvec, Rvec,img_sim_dev.cpu(),img_sim_dev.t().cpu())
-            evaluater_torch_val.test(Lvec_val, Rvec_val,img_sim_val.cpu(),img_sim_val.t().cpu())
-            # output2 = output.cpu().numpy()
-            # output2 = output2 / (np.linalg.norm(output2, axis=-1, keepdims=True) + 1e-5)
-            # dto.saveobj(output2, 'embedding_of_' + save_suffix())
+
+            if turn >=4:
+                mrr=evaluater_torch_val.test(Lvec_val, Rvec_val,img_sim_val.cpu(),img_sim_val.t().cpu())
+
+                if mrr>=mrr_or:
+                    mrr_or =mrr
+                    mrr = evaluater_torch.test(Lvec, Rvec,img_sim_dev.cpu(),img_sim_dev.t().cpu())
+                    torch.save({'state_dict': model.state_dict()}, os.path.join(output_dir, "check_model3.tar"))
+                    visual_links_array = np.array(visual_links, dtype=np.int32)
+                    np.savez(os.path.join(output_dir, "visual_links_array3.npz"), visual_links_array3=visual_links_array)
+                    used_inds_array = np.array(used_inds, dtype=np.int32)
+                    np.savez(os.path.join(output_dir, "used_inds3.npz"), used_inds3=used_inds_array)
   
 
         new_pair = []
@@ -319,19 +323,19 @@ for turn in range(5):
     
     for i,j in enumerate(A):
         if  B[j] == i:
-            # new_pair.append([rest_set_1[j],rest_set_2[i],A_score[i],B_score[j]])
+
             new_pair.append([rest_set_1[j],rest_set_2[i],1,1])
-            # new_pair_value.append([A_score[j],B_score[i]])  # 不清楚对不对
+
     A_score_sorted = np.sort(np.array(new_pair)[:,2])
-    print ("highest A_score_sorted:", A_score_sorted[-1].item(), "lowest A_score_sorted:", A_score_sorted[0].item())
+
 
     B_score_sorted = np.sort(np.array(new_pair)[:,3])
-    print ("highest B_score_sorted:", B_score_sorted[-1].item(), "lowest B_score_sorted:", B_score_sorted[0].item())
+
 
 
 
     train_pair = np.concatenate([train_pair,np.array(new_pair)],axis = 0)
-    # train_pair_score = np.concatenate([train_pair_score,np.array(new_pair_value)],axis = 0)
+ 
     for e1,e2,_,_ in new_pair:
         if e1 in rest_set_1:
             rest_set_1.remove(e1) 
@@ -341,12 +345,12 @@ for turn in range(5):
             rest_set_2.remove(e2)
     epoch = 5
     
+    # torch.save({'state_dict': model.state_dict()}, os.path.join(output_dir, "check_model3.tar"))
+    # visual_links_array = np.array(visual_links, dtype=np.int32)
+    # np.savez(os.path.join(output_dir, "visual_links_array3.npz"), visual_links_array3=visual_links_array)
+    # used_inds_array = np.array(used_inds, dtype=np.int32)
+    # np.savez(os.path.join(output_dir, "used_inds3.npz"), used_inds3=used_inds_array)
 
-torch.save({'state_dict': model.state_dict()}, os.path.join(output_dir, "check_model3.tar"))
-visual_links_array = np.array(visual_links, dtype=np.int32)
-np.savez(os.path.join(output_dir, "visual_links_array3.npz"), visual_links_array3=visual_links_array)
-used_inds_array = np.array(used_inds, dtype=np.int32)
-np.savez(os.path.join(output_dir, "used_inds3.npz"), used_inds3=used_inds_array)
 
 
 

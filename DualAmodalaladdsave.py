@@ -30,11 +30,6 @@ def set_seed(seed, cuda=True):
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["TF_CPP_MIN_LOG_LEVEL"]="2"
-# tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
-#config = tf.ConfigProto()
-#config.gpu_options.allow_growth=True  
-#sess = tf.Session(config=config)  
 
 seed =12306 
 np.random.seed(seed)
@@ -43,15 +38,15 @@ set_seed(seed)
 tf.compat.v1.set_random_seed(seed)
 
 # train_pair,dev_pair,adj_matrix,r_index,r_val,adj_features,rel_features = load_data("data/fb_yago_en/",train_ratio=0.20)
-data_ca="ja_en/"
+data_ca="zh_en/"
 data_dir = 'data/'+data_ca
-train_pair,valid_pair,dev_pair,adj_matrix,r_index,r_val,adj_features,rel_features = load_data(data_dir,train_ratio=0.30)
+train_pair,val_pair,dev_pair,adj_matrix,r_index,r_val,adj_features,rel_features = load_data(data_dir,train_ratio=0.30)
 adj_matrix = np.stack(adj_matrix.nonzero(),axis = 1)
 rel_matrix,rel_val = np.stack(rel_features.nonzero(),axis = 1),rel_features.data
 ent_matrix,ent_val = np.stack(adj_features.nonzero(),axis = 1),adj_features.data
 
 output_dir="checkpoints/"+data_ca
-np.savez(os.path.join(output_dir, "ref_pairs.npz"), train_pair=train_pair, valid_pair=valid_pair,dev_pair=dev_pair)
+np.savez(os.path.join(output_dir, "ref_pairs.npz"), train_pair=train_pair, val_pair=val_pair,dev_pair=dev_pair)
 
 node_size = adj_features.shape[0]
 rel_size = rel_features.shape[1]
@@ -106,6 +101,10 @@ del l_img_f, r_img_f, #img_sim
 l_img_dev = img_features[dev_pair[:,0]]
 r_img_dev = img_features[dev_pair[:,1]]
 img_sim_dev = l_img_dev.mm(r_img_dev.t())
+
+l_img_val = img_features[val_pair[:,0]]
+r_img_val = img_features[val_pair[:,1]]
+img_sim_val = l_img_val.mm(r_img_val.t())
 
 count = 0
 for index in range(len(two_d_indices)):
@@ -169,6 +168,7 @@ print('model constructed')
 
 # evaluater = evaluate(dev_pair)
 evaluater_torch = evaluateTorch(device,dev_pair)
+evaluater_torch_val = evaluateTorch(device,val_pair)
 rest_set_1 = [e1 for e1, e2 in dev_pair]
 rest_set_2 = [e2 for e1, e2 in dev_pair]
 np.random.shuffle(rest_set_1)
@@ -183,6 +183,8 @@ with torch.no_grad():
     # evaluater.test(Lvec, Rvec)
     evaluater_torch.test(Lvec, Rvec,img_sim_dev.cpu(),img_sim_dev.t().cpu())
 epoch = 12
+
+mrr_or=0
 
 for turn in range(5):
 
@@ -205,14 +207,23 @@ for turn in range(5):
             # toc = time.time()
         model.eval()
         with torch.no_grad():
+
             Lvec, Rvec = model.get_embeddings(dev_pair[:, 0], dev_pair[:, 1],turn)
-            # output = model(inputs)
-            # Lvec, Rvec = get_embedding(dev_pair[:, 0], dev_pair[:, 1], output.cpu())
-            # evaluater.test(Lvec, Rvec)
-            evaluater_torch.test(Lvec, Rvec,img_sim_dev.cpu(),img_sim_dev.t().cpu())
-            # output2 = output.cpu().numpy()
-            # output2 = output2 / (np.linalg.norm(output2, axis=-1, keepdims=True) + 1e-5)
-            # dto.saveobj(output2, 'embedding_of_' + save_suffix())
+            Lvec_val, Rvec_val = model.get_embeddings(val_pair[:, 0], val_pair[:, 1],turn)
+
+            if turn >=4:
+                mrr=evaluater_torch_val.test(Lvec_val, Rvec_val,img_sim_val.cpu(),img_sim_val.t().cpu())
+
+                if mrr>=mrr_or:
+                    mrr_or =mrr
+                    mrr = evaluater_torch.test(Lvec, Rvec,img_sim_dev.cpu(),img_sim_dev.t().cpu())
+                    torch.save({'state_dict': model.state_dict()}, os.path.join(output_dir, "check_model1.tar"))
+                    visual_links_array = np.array(visual_links, dtype=np.int32)
+                    np.savez(os.path.join(output_dir, "visual_links_array1.npz"), visual_links_array1=visual_links_array)
+                    used_inds_array = np.array(used_inds, dtype=np.int32)
+                    np.savez(os.path.join(output_dir, "used_inds1.npz"), used_inds1=used_inds_array)
+
+
   
 
         new_pair = []
@@ -228,19 +239,19 @@ for turn in range(5):
     
     for i,j in enumerate(A):
         if  B[j] == i:
-            # new_pair.append([rest_set_1[j],rest_set_2[i],A_score[i],B_score[j]])
+
             new_pair.append([rest_set_1[j],rest_set_2[i],1,1])
-            # new_pair_value.append([A_score[j],B_score[i]])  # 不清楚对不对
+
     A_score_sorted = np.sort(np.array(new_pair)[:,2])
-    print ("highest A_score_sorted:", A_score_sorted[-1].item(), "lowest A_score_sorted:", A_score_sorted[0].item())
+
 
     B_score_sorted = np.sort(np.array(new_pair)[:,3])
-    print ("highest B_score_sorted:", B_score_sorted[-1].item(), "lowest B_score_sorted:", B_score_sorted[0].item())
+
 
 
 
     train_pair = np.concatenate([train_pair,np.array(new_pair)],axis = 0)
-    # train_pair_score = np.concatenate([train_pair_score,np.array(new_pair_value)],axis = 0)
+
     for e1,e2,_,_ in new_pair:
         if e1 in rest_set_1:
             rest_set_1.remove(e1) 
@@ -252,11 +263,6 @@ for turn in range(5):
     
 
 
-torch.save({'state_dict': model.state_dict()}, os.path.join(output_dir, "check_model1.tar"))
-visual_links_array = np.array(visual_links, dtype=np.int32)
-np.savez(os.path.join(output_dir, "visual_links_array1.npz"), visual_links_array1=visual_links_array)
-used_inds_array = np.array(used_inds, dtype=np.int32)
-np.savez(os.path.join(output_dir, "used_inds1.npz"), used_inds1=used_inds_array)
 
 
 
