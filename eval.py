@@ -58,14 +58,18 @@ class evaluateTorch:
         #     results = tf.where(tf.equal(rank,K.cast(K.tile(ans_rank,[1,len(self.dev_pair)]),dtype="int32")))
         #     return K.expand_dims(results,axis=0)
         # results = torch.where(torch.equal(rank, torch.tensor(ans_rank).unsqueeze(0).repeat(1, len(self.dev_pair)).int()))
+
         rank = torch.argsort(-sim, dim=-1)
      
         return rank[:,0]
 
     def CSLS_cal(self, sourceVec, targetVec,m1,m2,evaluate=True):
-        batch_size = self.eval_batch_size
+        #left joint representation
+        batch_size = self.eval_batch_size # batch_size = 1024
+
         SxT_sim = []
         TxS_sim=[]
+
         for epoch in range(len(sourceVec) // batch_size + 1):
             SxT_sim.append(self.sim_results(sourceVec[epoch * batch_size:(epoch + 1) * batch_size], targetVec))
             TxS_sim.append(self.sim_results(targetVec[epoch * batch_size:(epoch + 1) * batch_size], sourceVec))

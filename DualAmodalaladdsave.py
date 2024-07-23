@@ -161,6 +161,7 @@ model = Encoder_Model(node_size=node_size, node_hidden=node_hidden,
                 adj_matrix=adj_matrix,img_feature = img_features,
                 triple_size=triple_size, dropout_rate=dropout_rate,
                 depth=depth, device=device)
+
 model = model.to(device)
 # opt = torch.optim.RMSprop(model.parameters(), lr=lr)
 opt = torch.optim.RMSprop(model.parameters(), lr=lr, weight_decay=0.0005)
@@ -186,6 +187,7 @@ epoch = 12
 
 mrr_or=0
 
+# start training
 for turn in range(5):
 
     for i in trange(epoch):
@@ -235,6 +237,7 @@ for turn in range(5):
     Lvec,Rvec = model.get_embeddings(rest_set_1,rest_set_2,turn)
     # A,B,A_score,B_score = evaluater.CSLS_cal(Lvec.detach().numpy(),Rvec.detach().numpy(),False)
     A,B = evaluater_torch.CSLS_cal(Lvec.detach(),Rvec.detach(),img_sim_dev_boot.cpu(),img_sim_dev_boot.t().cpu(),False)
+
 
     
     for i,j in enumerate(A):

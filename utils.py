@@ -79,7 +79,7 @@ def get_matrix(triples,entity,rel):
         rel_features = normalize_adj(sp.lil_matrix(rel_features))    
         return adj_matrix,r_index,r_val,adj_features,rel_features      
     
-def load_data(lang,train_ratio = 0.3):             
+def load_data(lang, train_ratio = 0.3):
     entity1,rel1,triples1 = load_triples(lang + 'triples_1')
     entity2,rel2,triples2 = load_triples(lang + 'triples_2')
     val_rate=0.1
@@ -94,7 +94,7 @@ def load_data(lang,train_ratio = 0.3):
     
     adj_matrix,r_index,r_val,adj_features,rel_features = get_matrix(triples1+triples2,entity1.union(entity2),rel1.union(rel2))
 
-    return np.array(train_pair),np.array(valid_pair),np.array(dev_pair),adj_matrix,np.array(r_index),np.array(r_val),adj_features,rel_features
+    return np.array(train_pair),np.array(valid_pair),np.array(dev_pair),adj_matrix,np.array(r_index),np.array(r_val),adj_features, rel_features
 
 
 def get_topk_indices(M, K=1000):
